@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Hebb/Young Secret Santa</title>
+<style>
+:root{color-scheme:dark;--paper:#faf1da;--muted:#d2d9c7;--gold:#f4ce82;--pine:#0b2b24;--line:#80928050}
+*{box-sizing:border-box} [hidden]{display:none!important}
+body{margin:0;min-height:100svh;display:grid;place-items:center;padding:28px 16px;color:var(--paper);font:16px/1.55 system-ui,sans-serif;background:radial-gradient(ellipse at 48% 24%,#235546,transparent 65%),#091e19}
+main{width:min(100%,560px);text-align:center;padding:32px clamp(18px,6vw,56px) 25px;border:1px solid #eaca835e;border-radius:25px;background:linear-gradient(150deg,#183c31,#0b2720 68%);box-shadow:0 26px 90px #0006;position:relative;overflow:hidden}
+.sparkle{position:absolute;color:#efd290a0;font-size:20px;pointer-events:none}.left{top:51px;left:15%}.right{top:87px;right:14%;font-size:26px}.tiny{top:125px;left:24%;font-size:12px}
+.gift{display:grid;place-items:center;width:82px;height:82px;margin:0 auto 12px;border:1px solid #eaca8380;border-radius:100%;background:#23493b;color:var(--gold)}
+.gift svg{width:44px;height:44px}
+h1,h2{font-family:Georgia,serif;font-weight:normal;line-height:1.05}h1{font-size:clamp(2.5rem,8.4vw,4rem);margin:18px 0 12px;letter-spacing:-.045em}h2{font-size:clamp(2rem,7vw,3.45rem);margin:8px 0 13px;color:var(--gold);overflow-wrap:anywhere}
+p{margin:10px 0;color:var(--muted)}.intro{max-width:330px;margin:0 auto 24px}
+button{font:inherit;font-weight:700;cursor:pointer;color:#25130b;background:var(--gold);border:1px solid transparent;border-radius:9px;padding:11px 20px;min-height:46px}button:hover{background:#ffe3a9}button:focus-visible,textarea:focus-visible{outline:2px solid var(--paper);outline-offset:4px}button:disabled{opacity:.65;cursor:wait}
+.secondary{background:transparent;border-color:#dcca91a0;color:var(--paper)}.secondary:hover{background:#355344}
+textarea{display:block;margin:8px auto 12px;width:100%;resize:vertical;min-height:86px;padding:10px;color:var(--paper);background:var(--pine);border:1px solid #a9a88b;border-radius:8px;overflow-wrap:anywhere}
+label{display:block;margin-top:18px;color:var(--paper);font-weight:650}small{color:var(--muted)} #status{min-height:1.55em;margin:10px 0 0;color:#f9dfad}
+.rules{border-top:1px solid var(--line);margin:20px 0 0;padding:16px 0 0;display:flex;justify-content:center;gap:8px 23px;flex-wrap:wrap;font-size:.9rem;color:var(--muted)}.rules strong{color:var(--gold)}
+form{display:grid;gap:10px;text-align:left;margin:0 auto;max-width:330px}
+form label{margin:0}
+input{width:100%;min-height:46px;border:1px solid #a9a88b;border-radius:8px;background:var(--pine);color:var(--paper);font:inherit;padding:8px 11px}
+input:focus-visible{outline:2px solid var(--paper);outline-offset:4px}
+</style>
+</head>
+<body>
+<main>
+<span class="sparkle left" aria-hidden="true">✦</span><span class="sparkle right" aria-hidden="true">✧</span><span class="sparkle tiny" aria-hidden="true">✦</span>
+<div class="gift" aria-hidden="true"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 24h30v17H9zM6 17h36v7H6zM24 17v24M24 17c-1-9-8-13-11-9-4 5 3 9 11 9Zm0 0c1-9 8-13 11-9 4 5-3 9-11 9Z"/></svg></div>
+<h1>Hebb/Young Secret Santa</h1>
+<section id="signin">
+<p class="intro">Enter your email address and we’ll send you a private link to unwrap your assignment.</p>
+<form id="sign-in">
+<label for="email">Email address</label>
+<input id="email" type="email" autocomplete="email" maxlength="254" required>
+<button id="send" type="submit">Email me a sign-in link</button>
+</form>
+</section>
+<section id="invite" hidden>
+<p class="intro">Your assignment is ready to unwrap.</p>
+<button id="unwrap" type="button">Reveal my assignment</button>
+</section>
+<section id="result" hidden>
+<p id="greeting"></p>
+<h2 id="recipient" tabindex="-1"></h2>
+<button id="hide" class="secondary" type="button">Hide my assignment</button>
+</section>
+<p id="status" role="status" aria-live="polite"></p>
+<div class="rules"><span>Gift limit <strong>$75</strong></span><span>Keep your assignment to yourself</span></div>
+</main>
+<script>
+'use strict';
+const byId = id => document.getElementById(id);
+const status = byId('status');
+let token = '';
+
+function show(id) {
+  for (const section of ['signin', 'invite', 'result']) byId(section).hidden = section !== id;
+}
+function failed(button) {
+  button.disabled = false;
+  status.textContent = 'Something went wrong. Please try again.';
+}
+
+byId('sign-in').addEventListener('submit', event => {
+  event.preventDefault();
+  const button = byId('send');
+  button.disabled = true;
+  status.textContent = 'Requesting your sign-in link…';
+  google.script.run.withSuccessHandler(result => {
+    button.disabled = false;
+    status.textContent = {
+      'check-inbox':'If this is the email address on the family list, check your inbox and spam folder for a sign-in link.',
+      paused:'Sign-in emails are turned off for now.',
+      retry:'The request could not be completed. Please try again shortly.'
+    }[result.state];
+  }).withFailureHandler(() => failed(button)).requestSignIn(byId('email').value);
+});
+
+byId('unwrap').addEventListener('click', () => {
+  const button = byId('unwrap');
+  button.disabled = true;
+  status.textContent = '';
+  google.script.run.withSuccessHandler(result => {
+    button.disabled = false;
+    token = '';
+    if (result.state !== 'revealed') {
+      show('signin');
+      status.textContent = 'That link has expired or has already been used. Request a fresh link below.';
+      return;
+    }
+    byId('greeting').textContent = result.giver + ', you’re shopping for';
+    byId('recipient').textContent = result.recipient;
+    show('result');
+    byId('recipient').focus();
+  }).withFailureHandler(() => failed(button)).revealAssignment(token);
+});
+
+function hideAssignment() {
+  byId('greeting').textContent = '';
+  byId('recipient').textContent = '';
+  show('signin');
+}
+byId('hide').addEventListener('click', () => {
+  hideAssignment();
+  byId('email').focus();
+});
+addEventListener('pagehide', () => { if (!byId('result').hidden) hideAssignment(); });
+
+google.script.url.getLocation(location => {
+  const match = String(location.hash || '').match(/^#?signin=([a-f0-9]{64})$/);
+  if (!match) return;
+  token = match[1];
+  show('invite');
+  google.script.history.replace({}, {}, '');
+});
+</script>
+</body>
+</html>
